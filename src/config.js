@@ -22,6 +22,11 @@ export const config = {
   maxTurns: Number(env.MAX_TURNS ?? 8),
   ownerPhone: env.OWNER_PHONE ?? "",
   adminToken: env.ADMIN_TOKEN ?? "",
+  logFile: env.LOG_FILE ?? "triage.log",
+  rateLimit: {
+    max: Number(env.RATE_LIMIT_MAX ?? 8),
+    windowMs: Number(env.RATE_LIMIT_WINDOW_MS ?? 60000),
+  },
   twilio: {
     sid: env.TWILIO_ACCOUNT_SID ?? "",
     token: env.TWILIO_AUTH_TOKEN ?? "",

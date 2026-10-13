@@ -92,12 +92,14 @@ to verify and stays in mock mode rather than trusting unauthenticated input.
 | The review page is not public | `src/server.js` — needs `ADMIN_TOKEN` once Twilio is live |
 | Twilio retries don't double-book | `src/db.js` — `seen` table keyed by message id |
 | A failed text never loses a lead | `src/server.js` — the job is saved before the send |
+| One number can't run up model calls | `src/ratelimit.js` — fixed window per caller |
 
 ## Project layout
 
 ```
 src/config.js    env + business profile
 src/db.js        SQLite: conversations, jobs, seen ids
+src/ratelimit.js fixed-window per-caller limiter
 src/model.js     Ollama client + the one prompt
 src/triage.js    pure decision logic + guardrails  (the tested part)
 src/twilio.js    signature verification + send SMS

@@ -1,13 +1,16 @@
 import { createServer } from "node:http";
+import { appendFile } from "node:fs/promises";
 import { config, loadBusiness } from "./config.js";
 import { openDb, makeStore } from "./db.js";
 import { triage, modelUp } from "./model.js";
 import { decide, ownerSummary } from "./triage.js";
 import { validSignature, sendSms } from "./twilio.js";
+import { makeLimiter } from "./ratelimit.js";
 import { renderAdmin } from "./admin.js";
 
 const business = loadBusiness();
 const store = makeStore(openDb(config.dbFile));
+const allow = makeLimiter({ max: config.rateLimit.max, windowMs: config.rateLimit.windowMs });
 
 const readBody = (req) =>
   new Promise((resolve, reject) => {
@@ -65,12 +68,18 @@ async function onSms(req, res, params) {
   if (!caller) return send(res, 200, twiml(""));
   if (!store.firstTime(sid)) return send(res, 200, twiml("")); // Twilio retry
 
+  if (!allow(caller)) {
+    console.warn(`[rate] dropping burst from ${caller}`);
+    return send(res, 200, twiml(""));
+  }
+
   const { history, turns } = store.getConversation(caller);
   history.push({ role: "user", content: params.Body ?? "" });
 
   let extraction;
   try {
     extraction = await triage({ business, history });
+    logModel(caller, history, extraction);
   } catch (err) {
     console.error(`[triage] model unavailable: ${err.message}`);
     store.clearConversation(caller);
@@ -108,6 +117,13 @@ async function replyToCaller(caller, body) {
   } catch (err) {
     console.error(`[sms] reply to ${caller} failed: ${err.message}`);
   }
+}
+
+// Append-only record of every model call, for debugging and the write-up. It holds
+// caller PII, so it stays local and is gitignored.
+function logModel(caller, history, extraction) {
+  const line = JSON.stringify({ at: new Date().toISOString(), caller, history, extraction }) + "\n";
+  appendFile(config.logFile, line).catch((err) => console.error(`[log] ${err.message}`));
 }
 
 async function notifyOwner(body) {
