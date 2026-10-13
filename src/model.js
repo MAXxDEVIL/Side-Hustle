@@ -63,14 +63,8 @@ Hard rules:
 ${SCHEMA_HINT}`;
 }
 
-/**
- * Ask the local open-weight model to classify and extract. Returns a plain object.
- * Throws if the model is unreachable or returns unusable output, so the caller's
- * server can degrade gracefully.
- */
-export async function triage({ business, history, timeoutMs = 30000 }) {
-  const messages = [{ role: "system", content: systemPrompt(business) }, ...history];
-
+/** One model call. Throws on any unusable response so the caller can retry. */
+async function oneAttempt(messages, timeoutMs) {
   const res = await fetch(`${config.model.url}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -92,6 +86,25 @@ export async function triage({ business, history, timeoutMs = 30000 }) {
   const parsed = JSON.parse(content);
   if (typeof parsed !== "object" || parsed === null) throw new Error("model output not an object");
   return parsed;
+}
+
+/**
+ * Ask the local open-weight model to classify and extract. Returns a plain object.
+ * Retries once on a transient failure so a blip doesn't page the owner. Throws after
+ * the last attempt, so the caller's server can degrade gracefully.
+ */
+export async function triage({ business, history, timeoutMs = 30000, attempts = 2 }) {
+  const messages = [{ role: "system", content: systemPrompt(business) }, ...history];
+
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await oneAttempt(messages, timeoutMs);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
 }
 
 /** Is the local model reachable right now? Used by the health endpoint. */
