@@ -59,9 +59,12 @@ npm run call                                     # simulate a missed call
 npm run sms -- "my sink is leaking, need help"   # simulate a caller's reply
 ```
 
-Open <http://localhost:8787/admin> for the owner's review page. Outbound texts are
-printed to the server log. With the model unreachable, the app degrades to "a human
-will get back to you" and queues the message for the owner — it never drops a lead.
+Open the **owner page** from the URL the server prints at startup, e.g.
+<http://localhost:8787/admin?token=...> — `/admin` requires the token in every mode, so a
+tunnel to the app can never expose caller details. Set `ADMIN_TOKEN` yourself to keep the
+link stable; otherwise the server mints one each run. Outbound texts are printed to the
+server log. With the model unreachable, the app degrades to "a human will get back to
+you" and queues the message for the owner — it never drops a lead.
 
 To run the real model locally:
 
@@ -91,7 +94,7 @@ to verify and stays in mock mode rather than trusting unauthenticated input.
 | A closed job sends nothing to the caller | `/admin/dismiss` — sets `closed`, sends no text |
 | Angry / emergency / unclear goes to a human | `src/triage.js` — `needs_human` / intent routing |
 | Webhooks are authenticated | `src/twilio.js` — HMAC-SHA1 signature check |
-| The review page is not public | `src/server.js` — needs `ADMIN_TOKEN` once Twilio is live |
+| The review page is not public | `src/server.js` — `ADMIN_TOKEN` required in every mode, minted if unset |
 | Twilio retries don't double-book | `src/db.js` — `seen` table keyed by message id |
 | A failed text never loses a lead | `src/server.js` — the job is saved before the send |
 | One number can't run up model calls | `src/ratelimit.js` — fixed window per caller |

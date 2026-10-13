@@ -12,6 +12,9 @@ const business = loadBusiness();
 const store = makeStore(openDb(config.dbFile));
 const allow = makeLimiter({ max: config.rateLimit.max, windowMs: config.rateLimit.windowMs });
 
+// Owner links carry the token: /admin is never open, so a bare link would 401.
+const adminUrl = () => `${config.publicUrl}/admin?token=${config.adminToken}`;
+
 const readBody = (req) =>
   new Promise((resolve, reject) => {
     let raw = "";
@@ -38,10 +41,10 @@ const send = (res, code, body, type = "text/plain; charset=utf-8") => {
 
 const twiml = (inner) => `<?xml version="1.0" encoding="UTF-8"?><Response>${inner}</Response>`;
 
-// The review page holds caller names and addresses, so it must not be open on a
-// live server. In mock mode it's localhost-only, so leave it free for dev.
+// The review page holds caller names and addresses, so it is never open — mock
+// mode included, because a tunnel can publish a mock server. config mints a
+// token when the owner has not set one.
 function adminOk(req, params = {}) {
-  if (config.mock) return true;
   const token =
     params.token ??
     req.headers["x-admin-token"] ??
@@ -102,12 +105,12 @@ async function onSms(req, res, params) {
     // Approving that job clears the thread, so a later message can file a new one.
     if (!store.openJobFor(caller)) {
       const id = store.addJob({ ...extraction, caller, status: "pending" });
-      await notifyOwner(`${ownerSummary({ ...extraction, caller }, business)}\n\nJob #${id} — approve: ${config.publicUrl}/admin`);
+      await notifyOwner(`${ownerSummary({ ...extraction, caller }, business)}\n\nJob #${id} — approve: ${adminUrl()}`);
     }
   } else if (decision.action === "handoff") {
     const id = store.addJob({ ...extraction, caller, status: "needs_human" });
     store.clearConversation(caller);
-    await notifyOwner(`Needs you now: ${caller} (job #${id}) — ${config.publicUrl}/admin`);
+    await notifyOwner(`Needs you now: ${caller} (job #${id}) — ${adminUrl()}`);
   }
 
   await replyToCaller(caller, decision.reply);
@@ -200,5 +203,10 @@ server.listen(config.port, () => {
   console.log(`${business.name} front desk on ${config.publicUrl} (${config.mock ? "MOCK" : "Twilio live"})`);
   console.log(`model: ${config.model.name} @ ${config.model.url}`);
   if (config.mock) console.log("Tip: node bin/mock-caller.js sms \"my sink is leaking at 12 Main St\"");
-  if (!config.mock && !config.adminToken) console.warn("WARNING: ADMIN_TOKEN is unset; /admin is locked and cannot be opened.");
+  console.log(`owner page: ${adminUrl()} (token required)`);
+  if (!/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(config.publicUrl))
+    console.log("PUBLIC_URL is not localhost: open the page above to review jobs; keep the token private.");
 });
+
+// Exported so tests can start on a random port and close it again.
+export { server };

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 
 function loadEnv(file = ".env") {
   try {
@@ -40,6 +41,11 @@ export const config = {
 
 // Mock mode: no Twilio credentials, so outbound SMS is logged instead of sent.
 config.mock = !config.twilio.sid || !config.twilio.token;
+
+// The review page holds caller names and addresses, so it is never open — mock
+// mode included, since a tunnel can publish a mock server. Mint a token if the
+// owner has not set one; it is printed at startup.
+if (!config.adminToken) config.adminToken = randomBytes(16).toString("hex");
 
 export function loadBusiness(file = env.BUSINESS_FILE ?? "business.json") {
   for (const f of [file, "business.example.json"]) {
