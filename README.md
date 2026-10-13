@@ -52,7 +52,7 @@ cp .env.example .env
 cp business.example.json business.json   # edit with the real business details
 
 npm start            # starts in MOCK mode when no Twilio creds are set
-npm test             # pure decision-logic tests, no network
+npm test             # decision logic, rate limiter and store tests, no network
 
 # in another shell:
 npm run call                                     # simulate a missed call
@@ -87,6 +87,8 @@ to verify and stays in mock mode rather than trusting unauthenticated input.
 |---|---|
 | A price is never sent to a caller | `src/triage.js` — replies matching a price are replaced |
 | A booking is never confirmed without owner approval | `src/triage.js` + `/admin/approve` |
+| A repeat message doesn't file a second job | `src/server.js` — one open job per caller, freed on approve or dismiss |
+| A closed job sends nothing to the caller | `/admin/dismiss` — sets `closed`, sends no text |
 | Angry / emergency / unclear goes to a human | `src/triage.js` — `needs_human` / intent routing |
 | Webhooks are authenticated | `src/twilio.js` — HMAC-SHA1 signature check |
 | The review page is not public | `src/server.js` — needs `ADMIN_TOKEN` once Twilio is live |
@@ -100,13 +102,13 @@ to verify and stays in mock mode rather than trusting unauthenticated input.
 src/config.js    env + business profile
 src/db.js        SQLite: conversations, jobs, seen ids
 src/ratelimit.js fixed-window per-caller limiter
-src/model.js     Ollama client + the one prompt
+src/model.js     Ollama client + the one prompt (JSON-schema-constrained output)
 src/triage.js    pure decision logic + guardrails  (the tested part)
 src/twilio.js    signature verification + send SMS
-src/admin.js     owner review page
+src/admin.js     owner review page (approve / dismiss)
 src/server.js    routes and wiring
 bin/mock-caller.js   drive the app without Twilio
-test/triage.test.js
+test/triage.test.js  test/ratelimit.test.js  test/db.test.js
 ```
 
 ## License
