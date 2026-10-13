@@ -11,6 +11,8 @@ const ASK = {
 };
 
 // A price or a firm booking must never leave the business without the owner's approval.
+// shortcut: these regexes catch the obvious cases; a paraphrase ("call it a couple hundred")
+// still slips through. Upgrade by checking reply_text against business.pricingPolicy in a second pass.
 const PRICE = /(?:[$€£]\s?\d|\b\d+\s?(?:dollars|usd|eur|gbp|quid|bucks)\b|\bper\s?hour\b|\bfree\b)/i;
 const PROMISE = /\b(you'?re booked|booking confirmed|confirmed for|we'?ll be there|see you (?:on|at)|scheduled for)\b/i;
 

@@ -35,6 +35,17 @@ const send = (res, code, body, type = "text/plain; charset=utf-8") => {
 
 const twiml = (inner) => `<?xml version="1.0" encoding="UTF-8"?><Response>${inner}</Response>`;
 
+// The review page holds caller names and addresses, so it must not be open on a
+// live server. In mock mode it's localhost-only, so leave it free for dev.
+function adminOk(req, params = {}) {
+  if (config.mock) return true;
+  const token =
+    params.token ??
+    req.headers["x-admin-token"] ??
+    new URL(req.url, "http://x").searchParams.get("token");
+  return !!config.adminToken && token === config.adminToken;
+}
+
 /** Missed call: don't take it, text the caller back immediately. */
 async function onVoice(req, res, params) {
   if (!store.firstTime(params.CallSid)) return send(res, 200, twiml(""));
@@ -116,9 +127,11 @@ const routes = {
     send(res, 200, JSON.stringify({ ok: true, model: await modelUp(), mock: config.mock }), "application/json");
   },
   "GET /admin": async (req, res) => {
-    send(res, 200, renderAdmin(store.listJobs(), business), "text/html; charset=utf-8");
+    if (!adminOk(req)) return send(res, 401, "unauthorized");
+    send(res, 200, renderAdmin(store.listJobs(), business, config.adminToken), "text/html; charset=utf-8");
   },
   "POST /admin/approve": async (req, res, params) => {
+    if (!adminOk(req, params)) return send(res, 401, "unauthorized");
     const job = store.getJob(Number(params.id));
     if (!job) return send(res, 404, "no such job");
     store.setJobStatus(job.id, "booked");
@@ -153,4 +166,5 @@ server.listen(config.port, () => {
   console.log(`${business.name} front desk on ${config.publicUrl} (${config.mock ? "MOCK" : "Twilio live"})`);
   console.log(`model: ${config.model.name} @ ${config.model.url}`);
   if (config.mock) console.log("Tip: node bin/mock-caller.js sms \"my sink is leaking at 12 Main St\"");
+  if (!config.mock && !config.adminToken) console.warn("WARNING: ADMIN_TOKEN is unset; /admin is locked and cannot be opened.");
 });

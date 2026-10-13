@@ -1,12 +1,13 @@
 const esc = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-function row(job) {
+function row(job, token) {
   const flag = job.status === "needs_human" ? " ⚠ needs you" : "";
+  const action = "/admin/approve" + (token ? `?token=${encodeURIComponent(token)}` : "");
   const approve =
     job.status === "booked"
       ? ""
-      : `<form method="POST" action="/admin/approve">
+      : `<form method="POST" action="${action}">
            <input type="hidden" name="id" value="${job.id}">
            <button>Approve &amp; confirm</button>
          </form>`;
@@ -21,8 +22,8 @@ function row(job) {
   </tr>`;
 }
 
-export function renderAdmin(jobs, business) {
-  const rows = jobs.map(row).join("\n") || `<tr><td colspan="7">No jobs yet.</td></tr>`;
+export function renderAdmin(jobs, business, token = "") {
+  const rows = jobs.map((j) => row(j, token)).join("\n") || `<tr><td colspan="7">No jobs yet.</td></tr>`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

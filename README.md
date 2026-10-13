@@ -89,6 +89,7 @@ to verify and stays in mock mode rather than trusting unauthenticated input.
 | A booking is never confirmed without owner approval | `src/triage.js` + `/admin/approve` |
 | Angry / emergency / unclear goes to a human | `src/triage.js` — `needs_human` / intent routing |
 | Webhooks are authenticated | `src/twilio.js` — HMAC-SHA1 signature check |
+| The review page is not public | `src/server.js` — needs `ADMIN_TOKEN` once Twilio is live |
 | Twilio retries don't double-book | `src/db.js` — `seen` table keyed by message id |
 | A failed text never loses a lead | `src/server.js` — the job is saved before the send |
 

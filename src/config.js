@@ -21,6 +21,7 @@ export const config = {
   dbFile: env.DB_FILE ?? "second-ring.db",
   maxTurns: Number(env.MAX_TURNS ?? 8),
   ownerPhone: env.OWNER_PHONE ?? "",
+  adminToken: env.ADMIN_TOKEN ?? "",
   twilio: {
     sid: env.TWILIO_ACCOUNT_SID ?? "",
     token: env.TWILIO_AUTH_TOKEN ?? "",

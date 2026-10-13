@@ -38,6 +38,7 @@ export function makeStore(db) {
       if (!sid) return true;
       const hit = db.prepare("SELECT 1 FROM seen WHERE sid = ?").get(sid);
       if (hit) return false;
+      // shortcut: `seen` grows without bound; on a long-lived server prune rows older than a few weeks.
       db.prepare("INSERT INTO seen (sid, created_at) VALUES (?, ?)").run(sid, now());
       return true;
     },
