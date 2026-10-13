@@ -3,14 +3,18 @@ const esc = (v) =>
 
 function row(job, token) {
   const flag = job.status === "needs_human" ? " ⚠ needs you" : "";
-  const action = "/admin/approve" + (token ? `?token=${encodeURIComponent(token)}` : "");
-  const approve =
-    job.status === "booked"
-      ? ""
-      : `<form method="POST" action="${action}">
-           <input type="hidden" name="id" value="${job.id}">
-           <button>Approve &amp; confirm</button>
-         </form>`;
+  const q = token ? `?token=${encodeURIComponent(token)}` : "";
+  const closed = job.status === "booked" || job.status === "closed";
+  const actions = closed
+    ? ""
+    : `<form method="POST" action="/admin/approve${q}" style="display:inline">
+         <input type="hidden" name="id" value="${job.id}">
+         <button>Approve &amp; confirm</button>
+       </form>
+       <form method="POST" action="/admin/dismiss${q}" style="display:inline">
+         <input type="hidden" name="id" value="${job.id}">
+         <button>Dismiss</button>
+       </form>`;
   return `<tr>
     <td>#${job.id}${flag}</td>
     <td>${esc(job.caller)}</td>
@@ -18,7 +22,7 @@ function row(job, token) {
     <td>${esc([job.name, job.address].filter(Boolean).join(", "))}</td>
     <td>${esc(job.preferred_time)}</td>
     <td>${esc(job.status)}</td>
-    <td>${approve}</td>
+    <td>${actions}</td>
   </tr>`;
 }
 

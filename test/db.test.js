@@ -16,6 +16,9 @@ test("openJobFor finds only this caller's open job", () => {
   store.setJobStatus(id, "booked");
   assert.equal(store.openJobFor("+1"), undefined, "a booked job is closed");
 
+  store.setJobStatus(id, "closed");
+  assert.equal(store.openJobFor("+1"), undefined, "a dismissed job is closed");
+
   store.addJob({ caller: "+1", status: "needs_human" });
   assert.ok(store.openJobFor("+1"), "an escalation still counts as open");
 });

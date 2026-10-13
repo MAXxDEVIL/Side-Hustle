@@ -162,6 +162,17 @@ const routes = {
     res.writeHead(303, { Location: "/admin" });
     res.end();
   },
+  // Close a job without texting the caller — for spam, wrong numbers, and escalations
+  // the owner has already handled by hand. Also frees the caller to send a new request.
+  "POST /admin/dismiss": async (req, res, params) => {
+    if (!adminOk(req, params)) return send(res, 401, "unauthorized");
+    const job = store.getJob(Number(params.id));
+    if (!job) return send(res, 404, "no such job");
+    store.setJobStatus(job.id, "closed");
+    store.clearConversation(job.caller);
+    res.writeHead(303, { Location: "/admin" });
+    res.end();
+  },
   "POST /voice": async (req, res, params) => {
     if (!verified(req, params)) return send(res, 403, "bad signature");
     await onVoice(req, res, params);
