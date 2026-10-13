@@ -86,6 +86,15 @@ export function makeStore(db) {
       return db.prepare("SELECT * FROM jobs WHERE id = ?").get(id);
     },
 
+    // The open job for a caller, if any. Used to tell a follow-up from a new lead.
+    openJobFor(caller) {
+      return db
+        .prepare(
+          "SELECT id FROM jobs WHERE caller = ? AND status IN ('pending', 'needs_human') ORDER BY id DESC LIMIT 1",
+        )
+        .get(caller);
+    },
+
     listJobs(status) {
       return status
         ? db.prepare("SELECT * FROM jobs WHERE status = ? ORDER BY id DESC").all(status)

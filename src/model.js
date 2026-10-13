@@ -13,6 +13,37 @@ const SCHEMA_HINT = `Reply with ONE JSON object, no prose, with exactly these ke
   "reply_text": a short friendly SMS that asks ONLY for the single next missing detail. No prices. No confirmations.
 }`;
 
+// Hand Ollama the shape so it always fills every key. Without this, Gemma sometimes
+// answers a finished conversation with a bare `{}` and the caller gets a nonsense prompt.
+const SCHEMA = {
+  type: "object",
+  properties: {
+    intent: {
+      type: "string",
+      enum: ["quote", "booking", "question", "emergency", "spam", "wrong_number", "human"],
+    },
+    service: { type: "string" },
+    urgency: { type: "string", enum: ["now", "today", "this_week", "flexible", ""] },
+    name: { type: "string" },
+    address: { type: "string" },
+    preferred_time: { type: "string" },
+    missing_fields: { type: "array", items: { type: "string" } },
+    needs_human: { type: "boolean" },
+    reply_text: { type: "string" },
+  },
+  required: [
+    "intent",
+    "service",
+    "urgency",
+    "name",
+    "address",
+    "preferred_time",
+    "missing_fields",
+    "needs_human",
+    "reply_text",
+  ],
+};
+
 function systemPrompt(business) {
   return `You are the text-message front desk for ${business.name}, a small "${business.services.join(", ")}" business run by ${business.ownerName}.
 
@@ -47,7 +78,7 @@ export async function triage({ business, history, timeoutMs = 30000 }) {
       model: config.model.name,
       messages,
       stream: false,
-      format: "json",
+      format: SCHEMA,
       options: { temperature: 0.2 },
     }),
     signal: AbortSignal.timeout(timeoutMs),

@@ -91,13 +91,19 @@ async function onSms(req, res, params) {
 
   const decision = decide(extraction, { business, caller, turns: turns + 1, maxTurns: config.maxTurns });
   history.push({ role: "assistant", content: decision.reply });
-  store.saveConversation(caller, history, turns + 1);
+  // Keep the thread so a follow-up ("thanks", "are you coming today?") is answered with
+  // context instead of being triaged from scratch. A completed job resets the turn count
+  // because collection is done; the cap stops the thread growing without bound.
+  store.saveConversation(caller, history.slice(-20), decision.action === "complete" ? 0 : turns + 1);
 
   // Record the lead before trying to text back: a Twilio blip must not lose a job.
   if (decision.action === "complete") {
-    const id = store.addJob({ ...extraction, caller, status: "pending" });
-    store.clearConversation(caller);
-    await notifyOwner(`${ownerSummary({ ...extraction, caller }, business)}\n\nJob #${id} — approve: ${config.publicUrl}/admin`);
+    // One open job per caller: a second "complete" is a follow-up, not a new lead.
+    // Approving that job clears the thread, so a later message can file a new one.
+    if (!store.openJobFor(caller)) {
+      const id = store.addJob({ ...extraction, caller, status: "pending" });
+      await notifyOwner(`${ownerSummary({ ...extraction, caller }, business)}\n\nJob #${id} — approve: ${config.publicUrl}/admin`);
+    }
   } else if (decision.action === "handoff") {
     const id = store.addJob({ ...extraction, caller, status: "needs_human" });
     store.clearConversation(caller);
@@ -151,6 +157,7 @@ const routes = {
     const job = store.getJob(Number(params.id));
     if (!job) return send(res, 404, "no such job");
     store.setJobStatus(job.id, "booked");
+    store.clearConversation(job.caller);
     await replyToCaller(job.caller, `Confirmed! ${business.ownerName} will be in touch to lock in a time. Thanks for choosing ${business.name}.`);
     res.writeHead(303, { Location: "/admin" });
     res.end();
