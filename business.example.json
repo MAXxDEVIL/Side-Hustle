@@ -10,11 +10,5 @@
   ],
   "hours": "Mon-Fri 7am-6pm, Sat 8am-1pm",
   "serviceArea": "within 25km of Riverbend",
-  "pricingPolicy": "Quotes are given on site. Never quote a price over SMS.",
-  "commonQuestions": {
-    "emergency": "Call the emergency line if water is flowing now; otherwise text us your address.",
-    "hours": "Mon-Fri 7am-6pm, Sat 8am-1pm.",
-    "area": "within 25km of Riverbend"
-  },
-  "bookingLink": "https://cal.com/riverbend-plumbing"
+  "pricingPolicy": "Quotes are given on site. Never quote a price over SMS."
 }

@@ -38,7 +38,6 @@ const complete = {
   name: "Sam",
   address: "3 Pine St",
   preferred_time: "Tuesday morning",
-  missing_fields: [],
   needs_human: false,
   reply_text: "Thanks, we'll be in touch.",
 };
@@ -121,5 +120,9 @@ test("needs_human hands off instead of booking", async () => {
   assert.equal(jobs.length, 1);
   assert.equal(jobs[0].status, "needs_human");
   assert.match(io.lines.join("\n"), /Needs you now/);
-  assert.equal(s.listJobs("pending").length, 0, "an escalation is never booked as a job");
+  assert.equal(
+    s.listJobs().filter((j) => j.status === "pending").length,
+    0,
+    "an escalation is never booked as a job",
+  );
 });

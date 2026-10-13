@@ -82,7 +82,7 @@ Type as the caller: anything that isn't a `/command` is a message from the calle
 | `/health` | Is the local model up? |
 | `/help`, `/quit` | The list; exit |
 
-Piping works too, which is how the tests and a demo script drive it:
+Piping works too, which is how the demo transcript in the write-up is reproduced:
 
 ```bash
 printf '%s\n' "my drain is blocked, Sam, 3 Pine St, Tuesday morning" "/jobs" "/approve 1" | npm start

@@ -8,7 +8,6 @@ const SCHEMA_HINT = `Reply with ONE JSON object, no prose, with exactly these ke
   "name": caller's name, or "",
   "address": job address or suburb, or "",
   "preferred_time": when they want it, verbatim if given, or "",
-  "missing_fields": array of which of name/address/preferred_time/service are still unknown,
   "needs_human": true if a person must take over (angry, emergency, unclear, anything unusual),
   "reply_text": a short friendly SMS that asks ONLY for the single next missing detail. No prices. No confirmations.
 }`;
@@ -27,7 +26,6 @@ const SCHEMA = {
     name: { type: "string" },
     address: { type: "string" },
     preferred_time: { type: "string" },
-    missing_fields: { type: "array", items: { type: "string" } },
     needs_human: { type: "boolean" },
     reply_text: { type: "string" },
   },
@@ -38,7 +36,6 @@ const SCHEMA = {
     "name",
     "address",
     "preferred_time",
-    "missing_fields",
     "needs_human",
     "reply_text",
   ],

@@ -100,7 +100,9 @@ export async function handleMessage(store, caller, body, io = console) {
 }
 
 function ownerNote(io, body) {
-  io.log(`\n[owner] ${body.replace(/\n/g, "\n[owner] ")}\n`);
+  // Prefix each line, and leave a blank line blank instead of a bare "[owner] ".
+  const lines = body.split("\n").map((l) => (l ? `[owner] ${l}` : ""));
+  io.log(`\n${lines.join("\n")}\n`);
 }
 
 // Append-only record of every model call, for debugging and the write-up. It holds

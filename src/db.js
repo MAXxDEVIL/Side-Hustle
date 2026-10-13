@@ -81,10 +81,8 @@ export function makeStore(db) {
         .get(caller);
     },
 
-    listJobs(status) {
-      return status
-        ? db.prepare("SELECT * FROM jobs WHERE status = ? ORDER BY id DESC").all(status)
-        : db.prepare("SELECT * FROM jobs ORDER BY id DESC").all();
+    listJobs() {
+      return db.prepare("SELECT * FROM jobs ORDER BY id DESC").all();
     },
 
     setJobStatus(id, status) {

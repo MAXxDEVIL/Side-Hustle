@@ -1,17 +1,12 @@
 import { readFileSync } from "node:fs";
 
-function loadEnv(file = ".env") {
-  try {
-    for (const line of readFileSync(file, "utf8").split("\n")) {
-      const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-      if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
-    }
-  } catch {
-    // no .env file, fine
-  }
+// Node's own .env parser (20.12+). A missing file is fine, and a variable already
+// in the environment wins — the behaviour the hand-rolled parser used to have.
+try {
+  process.loadEnvFile();
+} catch {
+  // no .env file, fine
 }
-
-loadEnv();
 
 const env = process.env;
 

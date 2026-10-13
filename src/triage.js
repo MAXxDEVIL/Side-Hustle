@@ -29,11 +29,11 @@ function isSafeForCaller(reply) {
   );
 }
 
-export function ownerHandoff(business) {
+function ownerHandoff(business) {
   return `Thanks for the message. ${business.ownerName} will get back to you shortly.`;
 }
 
-export function jobConfirmed(business) {
+function jobConfirmed(business) {
   return `Thanks, we've got your details and passed them to ${business.ownerName}. You'll hear back shortly to lock in a time.`;
 }
 
