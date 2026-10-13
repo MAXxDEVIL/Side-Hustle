@@ -1,20 +1,20 @@
 # Side Hustle — a local-first AI front desk
 
-Missed-call text-back and job triage for a one-person trade, running on **open-weight
+Job triage for a one-person trade, running entirely in the terminal on **open-weight
 models you host yourself**.
 
-A plumber, barber or tutor misses a call while their hands are full. The caller doesn't
-leave a voicemail — they ring the next listing. This answers the lost call in seconds
-with a text, then a **local open-weight model** reads the reply, works out what the job
-is, and collects the few details the owner actually needs. The owner gets one summary
-and approves it. Nothing is promised to a customer until a human says so.
+A plumber, barber or tutor misses a call while their hands are full, and the enquiry
+arrives as a text, a DM or a form message. Paste it into the front desk and a **local
+open-weight model** works out what the job is and collects the few details the owner
+actually needs. The owner reviews every job in the same terminal and approves it.
+Nothing is promised to a customer until a human says so.
 
 > Built for the **Hacktoberfest Open-Source AI Challenge: Week 2 — Side Hustle**.
 
 ## Why open models matter here
 
-The existing tools in this space glue a closed, per-message API (OpenAI, Retell) to a
-phone number. That's a bad fit for a one-person business:
+The existing tools in this space glue a closed, per-message API (OpenAI, Retell) to the
+front desk. That's a bad fit for a one-person business:
 
 - **Cost.** A busy trade can send hundreds of messages a month. Metered API calls make
   the margin disappear. A local model costs $0 per message.
@@ -30,88 +30,86 @@ what a customer is allowed to be told.
 
 ```
 flowchart LR
-  C[Caller] -->|missed call| T[Twilio]
-  T -->|voice webhook| A[Node app]
-  A -->|"text back"| C
-  C -->|SMS reply| A
+  C[You, as the caller] -->|types a message| A[Terminal front desk]
   A -->|prompt + schema| M[(Ollama / Gemma 3 local)]
   M -->|JSON| V{Deterministic validate}
   V -->|missing field| C
   V -->|complete + confident| DB[(SQLite jobs)]
-  DB --> O[Owner review page]
-  O -->|approve| C
+  DB --> O[You, as the owner]
+  O -->|/approve| C
   V -->|needs_human| O
 ```
 
-## Quickstart (no Twilio, no Ollama required)
+The whole loop is one process: nothing listens on a port, nothing is sent to anyone.
 
-Zero dependencies — just Node 22.5+.
+## Quickstart
+
+Zero dependencies — just Node 22.5+ and a local model.
 
 ```bash
 cp .env.example .env
 cp business.example.json business.json   # edit with the real business details
 
-npm start            # starts in MOCK mode when no Twilio creds are set
-npm test             # decision logic, rate limiter and store tests, no network
+ollama pull gemma3:4b
+ollama serve            # the front desk talks to it on :11434
 
-# in another shell:
-npm run call                                     # simulate a missed call
-npm run sms -- "my sink is leaking, need help"   # simulate a caller's reply
+npm start               # the terminal front desk
+npm test                # logic tests, no network
 ```
 
-Open the **owner page** from the URL the server prints at startup, e.g.
-<http://localhost:8787/admin?token=...> — `/admin` requires the token in every mode, so a
-tunnel to the app can never expose caller details. Set `ADMIN_TOKEN` yourself to keep the
-link stable; otherwise the server mints one each run. Outbound texts are printed to the
-server log. With the model unreachable, the app degrades to "a human will get back to
-you" and queues the message for the owner — it never drops a lead.
+Type as the caller: anything that isn't a `/command` is a message from the caller.
 
-To run the real model locally:
+```
+[caller] hi it's Sam at 3 Pine St, my kitchen drain is blocked, can you come Tuesday morning?
+
+[owner] New job for Riverbend Plumbing
+[owner] caller - blocked drains
+[owner] Sam, 3 Pine St
+[owner] Wants: Tuesday morning
+[owner] Job #1 — /approve 1 to confirm.
+
+<- Thanks, we've got your details and passed them to Sam. You'll hear back shortly to lock in a time.
+```
+
+## Commands
+
+| Command | Does |
+|---|---|
+| `/jobs` | List every job |
+| `/approve <id>` | Mark a job booked; prints the confirmation the caller would get |
+| `/dismiss <id>` | Close a job without confirming anything |
+| `/caller <id>` | Switch who you are typing as (default `caller`) |
+| `/health` | Is the local model up? |
+| `/help`, `/quit` | The list; exit |
+
+Piping works too, which is how the tests and a demo script drive it:
 
 ```bash
-ollama pull gemma3:4b
-ollama serve          # the app talks to it on :11434
+printf '%s\n' "my drain is blocked, Sam, 3 Pine St, Tuesday morning" "/jobs" "/approve 1" | npm start
 ```
-
-## Going live with Twilio
-
-1. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_NUMBER`, `OWNER_PHONE` and a
-   public `PUBLIC_URL` in `.env`.
-2. Point the number's **Voice** webhook at `POST {PUBLIC_URL}/voice` and its
-   **Messaging** webhook at `POST {PUBLIC_URL}/sms`.
-3. Complete **A2P 10DLC** registration for US numbers — it takes days, so start it early.
-
-Both webhooks verify `X-Twilio-Signature`. Without valid credentials the server refuses
-to verify and stays in mock mode rather than trusting unauthenticated input.
 
 ## Safety rules (enforced in code, not just in the prompt)
 
 | Rule | Where |
 |---|---|
-| A price is never sent to a caller | `src/triage.js` — replies matching a price are replaced |
-| A booking is never confirmed without owner approval | `src/triage.js` + `/admin/approve` |
-| A repeat message doesn't file a second job | `src/server.js` — one open job per caller, freed on approve or dismiss |
-| A closed job sends nothing to the caller | `/admin/dismiss` — sets `closed`, sends no text |
+| A price is never shown to a caller | `src/triage.js` — replies matching a price are replaced |
+| A booking is never confirmed without owner approval | `src/triage.js` — `complete` files a `pending` job; only `/approve` confirms |
+| A repeat message doesn't file a second job | `src/cli.js` — one open job per caller, freed on approve or dismiss |
+| A dismissed job confirms nothing | `/dismiss` — sets `closed` and prints nothing to the caller |
 | Angry / emergency / unclear goes to a human | `src/triage.js` — `needs_human` / intent routing |
-| Webhooks are authenticated | `src/twilio.js` — HMAC-SHA1 signature check |
-| The review page is not public | `src/server.js` — `ADMIN_TOKEN` required in every mode, minted if unset |
-| Twilio retries don't double-book | `src/db.js` — `seen` table keyed by message id |
-| A failed text never loses a lead | `src/server.js` — the job is saved before the send |
-| One number can't run up model calls | `src/ratelimit.js` — fixed window per caller |
+| An endless thread ends itself | `src/triage.js` — the turn cap forces a handoff |
+| A model blip doesn't lose a lead | `src/model.js` retries once; `src/cli.js` files a `needs_human` job as it degrades |
+| Every model input/output is recorded | `src/cli.js` — `LOG_FILE`, gitignored |
 
 ## Project layout
 
 ```
+src/cli.js       terminal front desk: commands, the loop, owner actions
 src/config.js    env + business profile
-src/db.js        SQLite: conversations, jobs, seen ids
-src/ratelimit.js fixed-window per-caller limiter
+src/db.js        SQLite: conversations, jobs
 src/model.js     Ollama client + the one prompt (JSON-schema-constrained output)
 src/triage.js    pure decision logic + guardrails  (the tested part)
-src/twilio.js    signature verification + send SMS
-src/admin.js     owner review page (approve / dismiss)
-src/server.js    routes and wiring
-bin/mock-caller.js   drive the app without Twilio
-test/triage.test.js  test/ratelimit.test.js  test/db.test.js
+test/cli.test.js  test/triage.test.js  test/db.test.js  test/model.test.js
 ```
 
 ## License

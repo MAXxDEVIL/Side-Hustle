@@ -2,16 +2,14 @@
   "name": "second-ring",
   "version": "0.1.0",
   "private": true,
-  "description": "Local-first AI front desk: missed-call text-back and job triage for a one-person trade, powered by a local open-weight model.",
+  "description": "Terminal front desk: a local open-weight model triages job messages for a one-person trade, and the owner approves in the CLI.",
   "type": "module",
   "license": "MIT",
   "engines": {
     "node": ">=22.5.0"
   },
   "scripts": {
-    "start": "node src/server.js",
-    "test": "node --test test/",
-    "call": "node bin/mock-caller.js call",
-    "sms": "node bin/mock-caller.js sms"
+    "start": "node src/cli.js",
+    "test": "node --test test/"
   }
 }

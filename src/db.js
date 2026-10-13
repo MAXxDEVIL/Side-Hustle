@@ -21,10 +21,6 @@ export function openDb(file) {
       status         TEXT NOT NULL,
       created_at     TEXT NOT NULL
     );
-    CREATE TABLE IF NOT EXISTS seen (
-      sid        TEXT PRIMARY KEY,
-      created_at TEXT NOT NULL
-    );
   `);
   return db;
 }
@@ -33,16 +29,6 @@ export function makeStore(db) {
   const now = () => new Date().toISOString();
 
   return {
-    // Returns true the first time a webhook id is seen, false on a Twilio retry.
-    firstTime(sid) {
-      if (!sid) return true;
-      const hit = db.prepare("SELECT 1 FROM seen WHERE sid = ?").get(sid);
-      if (hit) return false;
-      // shortcut: `seen` grows without bound; on a long-lived server prune rows older than a few weeks.
-      db.prepare("INSERT INTO seen (sid, created_at) VALUES (?, ?)").run(sid, now());
-      return true;
-    },
-
     getConversation(caller) {
       const row = db
         .prepare("SELECT history, turns FROM conversations WHERE caller = ?")
